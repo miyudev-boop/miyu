@@ -1,40 +1,43 @@
 import { renderHook, act } from '@testing-library/react-hooks';
-import useFetchData from '../useFetchData'; // Adjust the import to match the actual hook
-import { server, rest } from 'msw';
-import { setupServer } from 'msw/node';
+import useFetchData from '../useFetchData'; // Ensure this path matches your project structure
+import axios from 'axios';
 
-const mockServer = setupServer(
-  rest.get('/api/data', (req, res, ctx) => {
-    return res(ctx.json({ data: ['Item1', 'Item2'] }));
-  })
-);
-
-beforeAll(() => mockServer.listen());
-afterEach(() => mockServer.resetHandlers());
-afterAll(() => mockServer.close());
+jest.mock('axios');
 
 describe('useFetchData Hook', () => {
-  it('should fetch and return data', async () => {
-    const { result, waitForNextUpdate } = renderHook(() => useFetchData('/api/data'));
+  const mockedAxios = axios as jest.Mocked<typeof axios>;
 
-    await waitForNextUpdate();
+  it('should initialize with default state', () => {
+    const { result } = renderHook(() => useFetchData('https://api.example.com/data'));
 
-    expect(result.current.data).toEqual(['Item1', 'Item2']);
-    expect(result.current.error).toBeNull();
+    expect(result.current.data).toBe(null);
+    expect(result.current.error).toBe(null);
+    expect(result.current.loading).toBe(true);
   });
 
-  it('should handle fetch errors', async () => {
-    mockServer.use(
-      rest.get('/api/data', (req, res, ctx) => {
-        return res(ctx.status(500));
-      })
-    );
+  it('should fetch data successfully', async () => {
+    const mockData = { id: 1, name: 'Test Item' };
+    mockedAxios.get.mockResolvedValueOnce({ data: mockData });
 
-    const { result, waitForNextUpdate } = renderHook(() => useFetchData('/api/data'));
+    const { result, waitForNextUpdate } = renderHook(() => useFetchData('https://api.example.com/data'));
 
     await waitForNextUpdate();
 
-    expect(result.current.data).toBeNull();
-    expect(result.current.error).toBeDefined();
+    expect(result.current.data).toEqual(mockData);
+    expect(result.current.loading).toBe(false);
+    expect(result.current.error).toBe(null);
+  });
+
+  it('should handle fetch error', async () => {
+    const mockError = new Error('Network Error');
+    mockedAxios.get.mockRejectedValueOnce(mockError);
+
+    const { result, waitForNextUpdate } = renderHook(() => useFetchData('https://api.example.com/data'));
+
+    await waitForNextUpdate();
+
+    expect(result.current.data).toBe(null);
+    expect(result.current.loading).toBe(false);
+    expect(result.current.error).toBe(mockError);
   });
 });
