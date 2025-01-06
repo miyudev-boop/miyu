@@ -37,7 +37,7 @@ fi
 # Install backend dependencies
 echo_success "Installing backend dependencies..."
 cd ../
-yarn install
+yarn install  # Ensure all backend dependencies are installed
 
 # Setup environment variables
 if [ ! -f .env ]; then
@@ -57,9 +57,9 @@ echo_success "Prisma database setup complete."
 echo_success "Setting up frontend..."
 cd web
 if [ -x "$(command -v pnpm)" ]; then
-  pnpm install
+  pnpm install  # Install frontend dependencies using pnpm if available
 else
-  yarn install
+  yarn install  # Fallback to Yarn for frontend dependencies
 fi
 
 echo_success "Frontend setup complete."
@@ -68,4 +68,3 @@ echo_success "Frontend setup complete."
 cd ../
 
 echo_success "Setup is complete. You're ready to go!"
-
