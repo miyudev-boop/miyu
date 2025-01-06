@@ -1,5 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import { Logger } from '../utils/logger';
+from eliza_framework import Eliza
+from ar_framework import ARSession
+import { MIYUARCompanion } from './path_to_file/MIYUARCompanion';
 
 const prisma = new PrismaClient();
 
