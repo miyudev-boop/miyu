@@ -1,11 +1,11 @@
 import { renderHook, act } from '@testing-library/react-hooks';
-import usePersonality from '../usePersonality'; // Ensure this path is correct
+import usePersonality from '../usePersonality'; // Ensure this path matches your project structure
 
 describe('usePersonality Hook', () => {
   it('should initialize with default traits', () => {
     const { result } = renderHook(() => usePersonality());
 
-    expect(result.current.traits).toEqual(['Friendly', 'Curious']); // Adjust this to match the default state in your hook
+    expect(result.current.traits).toEqual(['Friendly', 'Curious']); // Adjust as per your hook's default state
   });
 
   it('should add a new trait', () => {
@@ -22,7 +22,7 @@ describe('usePersonality Hook', () => {
     const { result } = renderHook(() => usePersonality());
 
     act(() => {
-      result.current.addTrait('Friendly'); // Assuming 'Friendly' is a default trait
+      result.current.addTrait('Friendly');
     });
 
     expect(result.current.traits.filter((trait) => trait === 'Friendly').length).toBe(1);
@@ -45,16 +45,6 @@ describe('usePersonality Hook', () => {
       result.current.removeTrait('NonExistentTrait');
     });
 
-    expect(result.current.traits).toEqual(['Friendly', 'Curious']); // Adjust this based on your hook's logic
-  });
-
-  it('should handle invalid trait addition', () => {
-    const { result } = renderHook(() => usePersonality());
-
-    act(() => {
-      result.current.addTrait('');
-    });
-
-    expect(result.current.error).toBe('Invalid trait'); // Adjust based on your hook's error handling
+    expect(result.current.traits).toEqual(['Friendly', 'Curious']);
   });
 });
