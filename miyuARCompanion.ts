@@ -1,5 +1,6 @@
 from eliza_framework import Eliza
 from ar_framework import ARSession
+import { MIYUARCompanion } from './path_to_file/MIYUARCompanion'
 
 class MIYUARCompanion(Eliza):
     def __init__(self):
