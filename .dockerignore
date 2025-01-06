@@ -1,1 +1,60 @@
+# Node modules and dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Build and runtime files
+dist
+build
+*.log
+
+# Database and Prisma
+prisma/dev.db
+prisma/dev.db-journal
+*.sqlite
+
+# Backup and deployment
+backups
+deployments
+
+# Git
+.git
+.gitignore
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+
+# Docker files
+Dockerfile.*
+.dockerignore
+
+# Temporary and cache files
+tmp/
+temp/
+cache/
+*.tmp
+
+# Test coverage and reports
+coverage/
+*.lcov
+
+# Miscellaneous
+*.bak
+*.old
+*.pid
+*.seed
 
