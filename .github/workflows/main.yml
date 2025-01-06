@@ -1,4 +1,3 @@
-# .github/workflows/main.yml
 name: MIYU Production CI/CD
 
 on:
