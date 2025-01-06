@@ -50,4 +50,3 @@ export default logger;
  * logger.warn('This is a warning message');
  * logger.error('This is an error message', { errorDetails: { code: 500 } });
  */
-
