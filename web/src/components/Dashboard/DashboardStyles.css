@@ -1,0 +1,28 @@
+.dashboard-container {
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.dashboard-card {
+  padding: 15px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.dashboard-card h2 {
+  font-size: 1.2em;
+}
+
+.dashboard-card p {
+  font-size: 1.5em;
+  margin-top: 10px;
+  color: #333;
+}
