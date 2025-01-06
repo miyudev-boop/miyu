@@ -1,1 +1,215 @@
+name: MIYU Release Pipeline
 
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  validate-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Get version from tag
+      id: get-version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        
+    - name: Validate version
+      run: |
+        if ! [[ ${{ steps.get-version.outputs.version }} =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "Invalid version format. Must be in format: v*.*.*"
+          exit 1
+        fi
+
+  test:
+    needs: validate-version
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: miyu_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run tests
+      run: npm run test:ci
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/miyu_test
+        REDIS_URL: redis://localhost:6379
+        NODE_ENV: test
+
+  build:
+    needs: [validate-version, test]
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build and push Docker image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: miyu
+        VERSION: ${{ needs.validate-version.outputs.version }}
+      run: |
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$VERSION .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$VERSION
+        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$VERSION $ECR_REGISTRY/$ECR_REPOSITORY:stable
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:stable
+
+  create-release:
+    needs: [validate-version, build]
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Generate changelog
+      id: changelog
+      uses: scottbrenner/generate-changelog-action@master
+      env:
+        REPO: ${{ github.repository }}
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ needs.validate-version.outputs.version }}
+        name: Release v${{ needs.validate-version.outputs.version }}
+        body: |
+          # MIYU Release v${{ needs.validate-version.outputs.version }}
+
+          ## Changelog
+          ${{ steps.changelog.outputs.changelog }}
+          
+          ## Installation
+          ```bash
+          npm install miyu@${{ needs.validate-version.outputs.version }}
+          ```
+          
+          ## Docker
+          ```bash
+          docker pull miyu:${{ needs.validate-version.outputs.version }}
+          ```
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        
+    - name: Create NPM Release
+      run: |
+        echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+        npm publish
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  deploy-production:
+    needs: [validate-version, create-release]
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Update Kubernetes deployments
+      run: |
+        aws eks update-kubeconfig --name miyu-production-cluster
+        kubectl set image deployment/miyu \
+          miyu=$ECR_REGISTRY/$ECR_REPOSITORY:${{ needs.validate-version.outputs.version }} \
+          -n production
+        kubectl rollout status deployment/miyu -n production
+
+    - name: Create Sentry release
+      uses: getsentry/action-release@v1
+      env:
+        SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+        SENTRY_PROJECT: miyu
+      with:
+        environment: production
+        version: ${{ needs.validate-version.outputs.version }}
+
+  notify:
+    needs: [deploy-production]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+    - name: Notify Slack
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        fields: repo,message,commit,author,action,eventName,ref,workflow,job,took
+        text: |
+          MIYU Release v${{ needs.validate-version.outputs.version }} has been deployed! 🚀
+          Check out the release notes: https://github.com/${{ github.repository }}/releases/tag/v${{ needs.validate-version.outputs.version }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    - name: Update status
+      if: always()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const { context, status } = github;
+          const state = status === 'success' ? '✅ Success' : '❌ Failure';
+          
+          await github.rest.repos.createDeploymentStatus({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            deployment_id: process.env.DEPLOYMENT_ID,
+            state: status === 'success' ? 'success' : 'failure',
+            description: `Release ${state} - v${{ needs.validate-version.outputs.version }}`,
+            environment_url: process.env.PROD_URL
+          });
