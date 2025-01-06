@@ -1,5 +1,5 @@
 /**
- * API and Utility Functions for the Web Application
+ * API and Utility Functions for the Web Applications
  */
 
 // ==================== API Utilities ====================
