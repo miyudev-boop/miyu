@@ -1,1 +1,73 @@
+# Node.js dependencies
+node_modules/
+package-lock.json
+npm-debug.log
+yarn.lock
+yarn-error.log
+
+# Build outputs
+dist/
+build/
+*.js
+*.js.map
+
+# TypeScript
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.example
+
+# Prisma
+prisma/dev.db
+prisma/dev.db-journal
+*.sqlite
+
+# Logs
+*.log
+logs/
+*.log.*
+logs/*.log
+
+# Backups and generated files
+backups/
+deployments/
+*.bak
+*.seed
+*.old
+
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE/Editor files
+.idea/
+.vscode/
+*.swp
+
+# Coverage and test output
+coverage/
+*.lcov
+*.lcov.info
+nyc_output/
+test-output/
+
+# Miscellaneous
+.tmp/
+.temp/
+.cache/
+*.pid
+*.seed
+
+# Docker
+Dockerfile
+Dockerfile.*
+.dockerignore
+
+# Git
+.git/
+*.orig
 
