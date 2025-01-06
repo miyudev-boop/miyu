@@ -1,1 +1,100 @@
+// schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // Adjust this to your database provider
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String   @id @default(cuid())
+  username   String   @unique
+  email      String   @unique
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  messages   Message[]
+  integrations Integration[]
+  transactions Transaction[]
+  settings   Setting[]
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  content    String
+  metadata   Json     // Stores additional details, e.g., message type or tags
+  userId     String   @map("user_id")
+  user       User     @relation(fields: [userId], references: [id])
+  createdAt  DateTime @default(now())
+}
+
+model Integration {
+  id         String   @id @default(cuid())
+  type       String   // e.g., "twitter", "telegram", "solana"
+  config     Json     // Stores configuration details
+  status     String   @default("active") // e.g., "active", "inactive"
+  userId     String   @map("user_id")
+  user       User     @relation(fields: [userId], references: [id])
+  createdAt  DateTime @default(now())
+}
+
+model Transaction {
+  id         String   @id @default(cuid())
+  hash       String   @unique
+  userId     String   @map("user_id")
+  user       User     @relation(fields: [userId], references: [id])
+  amount     Float
+  currency   String   // e.g., "SOL", "USDC"
+  type       String   // e.g., "deposit", "withdrawal"
+  metadata   Json     // Additional transaction details
+  createdAt  DateTime @default(now())
+}
+
+model Setting {
+  id         String   @id @default(cuid())
+  key        String   @unique
+  value      Json
+  userId     String?  @map("user_id")
+  user       User?    @relation(fields: [userId], references: [id])
+  createdAt  DateTime @default(now())
+}
+
+model Notification {
+  id         String   @id @default(cuid())
+  content    String
+  status     String   @default("unread") // e.g., "unread", "read"
+  userId     String   @map("user_id")
+  user       User     @relation(fields: [userId], references: [id])
+  createdAt  DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String   // e.g., "login", "transaction", "update_settings"
+  userId     String?  @map("user_id")
+  user       User?    @relation(fields: [userId], references: [id])
+  metadata   Json     // Additional details about the action
+  createdAt  DateTime @default(now())
+}
+
+model APIKey {
+  id         String   @id @default(cuid())
+  key        String   @unique
+  userId     String   @map("user_id")
+  user       User     @relation(fields: [userId], references: [id])
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime?
+  isRevoked  Boolean  @default(false)
+}
+
+model Webhook {
+  id         String   @id @default(cuid())
+  url        String
+  event      String   // e.g., "transaction_completed", "new_message"
+  userId     String   @map("user_id")
+  user       User     @relation(fields: [userId], references: [id])
+  createdAt  DateTime @default(now())
+}
 
